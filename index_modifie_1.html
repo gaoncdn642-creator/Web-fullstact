@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduData Cameroun v3.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════
+  FIREBASE — Configuration de l'utilisateur
+  ══════════════════════════════════════════════════════════ -->
+<script type="importmap">
+{
+  "imports": {
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+    "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+  }
+}
+</script>
+
+<style>
+:root{
+  --green:#00694A;--gl:#00A878;--gg:rgba(0,168,120,.15);
+  --red:#C0111E;--yellow:#F5C400;
+  --dark:#080F0C;--d2:#0F1A14;--d3:#162218;
+  --card:#1F3226;--card2:#243829;
+  --bdr:rgba(0,168,120,.18);--text:#E8F0EB;--t2:#A8C4B0;--mt:#6B8F76;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Outfit',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--d2);}::-webkit-scrollbar-thumb{background:var(--green);border-radius:3px;}
+/* LOADER */
+#loader{position:fixed;inset:0;z-index:9999;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;transition:opacity .6s,visibility .6s;}
+#loader.hide{opacity:0;visibility:hidden;pointer-events:none;}
+.ld-flag{display:flex;border-radius:8px;overflow:hidden;box-shadow:0 0 50px rgba(0,168,120,.35);}
+.ld-flag div{width:16px;height:64px;animation:fp 1.2s ease-in-out infinite;}
+.ld-flag div:nth-child(1){background:var(--green);}
+.ld-flag div:nth-child(2){background:var(--red);animation-delay:.2s;}
+.ld-flag div:nth-child(3){background:var(--yellow);animation-delay:.4s;}
+@keyframes fp{0%,100%{opacity:.3;transform:scaleY(.8);}50%{opacity:1;transform:scaleY(1.15);}}
+.ld-txt{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--t2);letter-spacing:4px;}
+.ld-sub{font-size:12px;color:var(--mt);letter-spacing:2px;}
+/* SIDEBAR */
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:linear-gradient(180deg,var(--d2) 0%,var(--d3) 100%);border-right:1px solid var(--bdr);z-index:100;display:flex;flex-direction:column;transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.sbh{padding:22px 18px 14px;}
+.sblogo{display:flex;align-items:center;gap:11px;margin-bottom:4px;}
+.sbbadge{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--green),var(--gl));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sbname{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700;line-height:1.1;}
+.sbsub{font-size:10px;color:var(--mt);letter-spacing:2px;text-transform:uppercase;}
+.sbstripe{height:2px;background:linear-gradient(to right,var(--green),var(--red),var(--yellow));border-radius:2px;margin:12px 0;}
+/* BOUTON COLLECTE VISIBLE */
+.ni-collecte{background:linear-gradient(135deg,var(--green),var(--gl));color:white;border-radius:12px;padding:13px 16px;margin:4px 10px 8px;box-shadow:0 4px 16px rgba(0,168,120,.35);display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .25s;}
+.ni-collecte:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,168,120,.5);}
+.ni-c-title{font-size:13px;font-weight:700;}
+.ni-c-sub{font-size:10px;opacity:.8;margin-top:1px;}
+.navsec{padding:0 10px;margin-bottom:2px;}
+.navlbl{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:var(--mt);padding:6px 12px 4px;font-weight:600;}
+.ni{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:10px;cursor:pointer;transition:all .2s;color:var(--t2);font-size:13px;font-weight:500;margin-bottom:2px;position:relative;}
+.ni:hover{background:var(--gg);color:var(--text);}
+.ni.active{background:linear-gradient(135deg,rgba(0,104,74,.35),rgba(0,168,120,.15));color:var(--gl);border:1px solid var(--bdr);}
+.ni.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--gl);border-radius:0 3px 3px 0;}
+.niico{font-size:15px;width:20px;text-align:center;}
+.nibadge{margin-left:auto;background:var(--green);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;}
+.sbfoot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--bdr);}
+.fb-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);}
+.fb-dot{width:8px;height:8px;border-radius:50%;background:var(--gl);box-shadow:0 0 6px var(--gl);animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+/* TOPBAR */
+#topbar{position:fixed;top:0;left:260px;right:0;height:62px;background:rgba(8,15,12,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--bdr);z-index:90;display:flex;align-items:center;padding:0 24px;gap:12px;}
+.tbtitle{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;flex:1;}
+.tbsearch{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:7px 13px;width:250px;}
+.tbsearch input{background:none;border:none;outline:none;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;flex:1;}
+.tbsearch input::placeholder{color:var(--mt);}
+.btn-nc{display:flex;align-items:center;gap:8px;padding:9px 16px;background:linear-gradient(135deg,var(--green),var(--gl));color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 3px 10px rgba(0,168,120,.3);white-space:nowrap;}
+.btn-nc:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,168,120,.45);}
+.icbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;}
+.icbtn:hover{background:var(--gg);border-color:var(--green);color:var(--text);}
+/* MAIN */
+#main{margin-left:260px;padding-top:62px;min-height:100vh;}
+.page{display:none;padding:26px;animation:fi .3s ease;}
+.page.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.ph{margin-bottom:22px;}.ph h2{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;line-height:1;}.ph p{color:var(--t2);font-size:13px;margin-top:4px;}
+.bc{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt);margin-bottom:5px;}.bc span{color:var(--gl);}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.sc{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;}
+.sc:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,var(--gl));}
+.sc:nth-child(1){--ac:var(--gl);}.sc:nth-child(2){--ac:var(--yellow);}.sc:nth-child(3){--ac:var(--red);}.sc:nth-child(4){--ac:#818CF8;}
+.scglow{position:absolute;bottom:-20px;right:-20px;width:70px;height:70px;background:radial-gradient(circle,var(--ac,var(--gl)) 0%,transparent 70%);opacity:.08;border-radius:50%;}
+.sclbl{font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--mt);margin-bottom:8px;font-weight:600;}
+.scval{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;line-height:1;}
+.scsub{font-size:12px;color:var(--mt);margin-top:4px;}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:20px;}
+.ct{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;margin-bottom:3px;}
+.cs{font-size:12px;color:var(--mt);margin-bottom:14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.mb16{margin-bottom:16px;}
+.chartbox{position:relative;width:100%;}
+.h220{height:220px;}.h260{height:260px;}.h300{height:300px;}.h320{height:320px;}.h250{height:250px;}
+/* FORM */
+.fsl{font-size:10px;text-transform:uppercase;letter-spacing:2.5px;color:var(--gl);font-weight:700;padding:5px 0;border-bottom:1px solid var(--bdr);margin:20px 0 14px;}
+.fg{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;}.fg.c3{grid-template-columns:repeat(3,1fr);}
+.fgr{display:flex;flex-direction:column;gap:5px;}.fgr.full{grid-column:1/-1;}
+.fl{font-size:12px;font-weight:600;color:var(--t2);}.fl .req{color:var(--yellow);}
+.fi{padding:10px 13px;background:var(--d3);border:1.5px solid var(--bdr);border-radius:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:all .2s;}
+.fi:focus{border-color:var(--gl);background:rgba(0,168,120,.05);box-shadow:0 0 0 3px rgba(0,168,120,.1);}
+.fi::placeholder{color:var(--mt);}select.fi option{background:var(--d2);}textarea.fi{resize:vertical;min-height:75px;}
+/* TOGGLES */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tgi{display:flex;align-items:center;gap:13px;padding:13px 16px;background:var(--d3);border:1.5px solid var(--bdr);border-radius:12px;cursor:pointer;user-select:none;transition:border-color .2s,background .2s;-webkit-tap-highlight-color:transparent;}
+.tgi:hover{border-color:rgba(0,168,120,.4);}.tgi.on{border-color:var(--gl);background:rgba(0,168,120,.1);}
+.tgt{width:42px;height:24px;background:rgba(255,255,255,.12);border-radius:12px;position:relative;transition:background .25s;flex-shrink:0;pointer-events:none;}
+.tgi.on .tgt{background:var(--green);}
+.tgk{position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:white;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .25s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+.tgi.on .tgk{transform:translateX(18px);}
+.tgl{font-size:13px;font-weight:500;color:var(--t2);pointer-events:none;}.tgi.on .tgl{color:var(--text);}
+/* STEPS */
+.steps{display:flex;align-items:flex-start;margin-bottom:22px;}
+.step{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.scn{width:30px;height:30px;border-radius:50%;border:2px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--mt);background:var(--d3);transition:all .3s;}
+.step.done .scn{background:var(--green);border-color:var(--green);color:white;}
+.step.act .scn{border-color:var(--gl);color:var(--gl);background:var(--gg);}
+.sl{font-size:10px;color:var(--mt);}
+.stepline{flex:1;height:2px;background:var(--bdr);margin:0 6px;margin-bottom:14px;transition:background .3s;}
+/* BUTTONS */
+.btn{padding:10px 20px;border-radius:10px;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btnp{background:linear-gradient(135deg,var(--green),var(--gl));color:white;box-shadow:0 4px 12px rgba(0,168,120,.25);}
+.btnp:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,168,120,.4);}
+.btns{background:var(--card);color:var(--t2);border:1px solid var(--bdr);}
+.btns:hover{background:var(--gg);color:var(--text);border-color:var(--green);}
+.btnd{background:rgba(192,17,30,.1);color:#F87171;border:1px solid rgba(192,17,30,.2);}
+.btnd:hover{background:var(--red);color:white;}
+.btnsm{padding:6px 10px;font-size:12px;border-radius:8px;}
+/* TABLE */
+.tbl-ctn{width:100%;overflow-x:auto;background:var(--card);border:1px solid var(--bdr);border-radius:14px;}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px;}
+th{text-align:left;padding:14px 16px;background:rgba(255,255,255,.02);color:var(--mt);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--bdr);}
+td{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--t2);}
+tr:hover td{background:rgba(255,255,255,.01);color:var(--text);}
+.tdn{font-weight:600;color:var(--text);}
+.bg{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;}
+.bgp{background:rgba(0,168,120,.15);color:var(--gl);}
+.bgpr{background:rgba(129,140,248,.15);color:#818CF8;}
+.bgc{background:rgba(245,196,0,.15);color:var(--yellow);}
+.bgi{background:rgba(251,146,60,.15);color:#FB923C;}
+.bgcm{background:rgba(244,114,182,.15);color:#F472B6;}
+/* MODAL */
+#modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:all .3s;}
+#modal.open{opacity:1;visibility:visible;}
+.mc{background:var(--card);border:1px solid var(--bdr);border-radius:20px;width:100%;max-width:650px;max-height:90vh;overflow-y:auto;position:relative;animation:ms .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes ms{from{transform:scale(.9) translateY(20px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
+.mch{padding:20px 24px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;}
+.mct{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;}
+.mclose{width:32px;height:32px;border-radius:50%;background:var(--d3);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.mclose:hover{background:var(--red);color:white;}
+.mcb{padding:24px;}
+/* UTILS */
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:24px;right:24px;padding:14px 24px;border-radius:12px;background:var(--card);border:1px solid var(--bdr);box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:2000;transform:translateY(100px);opacity:0;transition:all .4s cubic-bezier(.175,.885,.32,1.275);display:flex;align-items:center;gap:12px;font-weight:500;font-size:14px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-left:4px solid var(--gl);}
+.toast.err{border-left:4px solid var(--red);}
+.toast.wrn{border-left:4px solid var(--yellow);}
+.kpinum{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:800;line-height:1;}
+.dlegitem{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mt);margin-bottom:6px;}
+.dlegdot{width:8px;height:8px;border-radius:50%;}
+.emp{padding:40px;text-align:center;color:var(--mt);}
+.empico{font-size:40px;margin-bottom:12px;opacity:.3;}
+.pag{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:20px;}
+.pb{width:32px;height:32px;border-radius:8px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;}
+.pb:hover{background:var(--gg);border-color:var(--green);color:var(--text);}
+.pb.act{background:var(--green);color:white;border-color:var(--green);}
+
+@media(max-width:900px){
+  #sidebar{transform:translateX(-260px);}
+  #sidebar.open{transform:translateX(0);}
+  #topbar,#main{margin-left:0;}
+  .sg{grid-template-columns:1fr 1fr;}
+  .g2,.g3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-flag"><div></div><div></div><div></div></div>
+  <div class="ld-txt">EDUDATA CAMEROUN</div>
+  <div class="ld-sub" id="ld-sub">Connexion à la base de données...</div>
+</div>
+
+<div id="sidebar">
+  <div class="sbh">
+    <div class="sblogo">
+      <div class="sbbadge">🇨🇲</div>
+      <div class="sbname">EduData<br><span style="color:var(--gl)">Cameroun</span></div>
+    </div>
+    <div class="sbsub">Plateforme Nationale</div>
+    <div class="sbstripe"></div>
+  </div>
+  
+  <div class="ni-collecte" onclick="nav('collecte')">
+    <div class="niico">➕</div>
+    <div>
+      <div class="ni-c-title">Nouvelle Collecte</div>
+      <div class="ni-c-sub">Ajouter une école</div>
+    </div>
+  </div>
+
+  <div class="navsec">
+    <div class="navlbl">Principal</div>
+    <div class="ni active" onclick="nav('dashboard')"><div class="niico">📊</div>Tableau de bord</div>
+    <div class="ni" onclick="nav('analytics')"><div class="niico">📈</div>Analytiques</div>
+    <div class="ni" onclick="nav('charts')"><div class="niico">📉</div>Graphiques</div>
+    <div class="ni" onclick="nav('carte')"><div class="niico">🗺️</div>Carte régionale</div>
+  </div>
+
+  <div class="navsec">
+    <div class="navlbl">Données</div>
+    <div class="ni" onclick="nav('liste')"><div class="niico">🗂️</div>Base de données <div class="nibadge" id="nbtotal">0</div></div>
+  </div>
+
+  <div class="sbfoot">
+    <div class="fb-status">
+      <div class="fb-dot" id="fb-dot"></div>
+      <span id="fb-txt">Initialisation...</span>
+    </div>
+  </div>
+</div>
+
+<div id="topbar">
+  <div class="icbtn" onclick="toggleSB()">☰</div>
+  <div class="tbtitle" id="tbtitle">Tableau de bord</div>
+  <div class="tbsearch">
+    <span>🔍</span>
+    <input type="text" placeholder="Rechercher une école..." onkeyup="if(event.key==='Enter')globalSearch(this.value)">
+  </div>
+  <button class="btn-nc" onclick="nav('collecte')">➕ Collecte</button>
+</div>
+
+<div id="main">
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="ph">
+      <div class="bc">EduData <span>/</span> Dashboard</div>
+      <h2>Vue d'ensemble</h2>
+      <p>Statistiques nationales en temps réel sur le système éducatif.</p>
+    </div>
+
+    <div class="sg">
+      <div class="sc">
+        <div class="scglow"></div>
+        <div class="sclbl">Écoles enregistrées</div>
+        <div class="scval" id="s-tot">0</div>
+        <div class="scsub" id="s-today"></div>
+      </div>
+      <div class="sc">
+        <div class="scglow"></div>
+        <div class="sclbl">Total Élèves</div>
+        <div class="scval" id="s-elv">0</div>
+        <div class="scsub">Population scolarisée</div>
+      </div>
+      <div class="sc">
+        <div class="scglow"></div>
+        <div class="sclbl">Enseignants</div>
+        <div class="scval" id="s-ens">0</div>
+        <div class="scsub" id="s-rens">Ratio calculé...</div>
+      </div>
+      <div class="sc">
+        <div class="scglow"></div>
+        <div class="sclbl">Régions couvertes</div>
+        <div class="scval" id="s-reg">0</div>
+        <div class="scsub">Sur 10 régions</div>
+      </div>
+    </div>
+
+    <div class="g3 mb16">
+      <div class="card" style="grid-column: span 1">
+        <div class="ct">Répartition par type</div>
+        <div class="cs">Public vs Privé vs Confessionnel</div>
+        <div class="h220 chartbox"><canvas id="ch-donut"></canvas></div>
+        <div id="type-leg" style="margin-top:14px"></div>
+      </div>
+      <div class="card" style="grid-column: span 2">
+        <div class="ct">Infrastructures de base</div>
+        <div class="cs">% d'accès aux services essentiels</div>
+        <div class="h250 chartbox"><canvas id="ch-infra"></canvas></div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="ct">Densité par région</div>
+        <div class="cs">Nombre d'écoles par division administrative</div>
+        <div class="h260 chartbox"><canvas id="ch-region"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="ct">Dernières collectes</div>
+        <div class="cs">Mises à jour récentes de la base</div>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div id="page-analytics" class="page">
+    <div class="ph"><h2>Analytiques Avancées</h2><p>Indicateurs de performance et KPIs du système éducatif.</p></div>
+    <div class="sg mb16" id="kpi-cards"></div>
+    <div class="g2 mb16">
+      <div class="card">
+        <div class="ct">Répartition par Cycle</div>
+        <div class="h260 chartbox"><canvas id="ch-cycle"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="ct">Types d'établissements</div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div class="h220 chartbox" style="width:180px"><canvas id="ch-donut2"></canvas></div>
+          <div id="type-leg2" style="flex:1"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Tableau comparatif régional</div>
+      <div class="tbl-ctn" style="margin-top:14px">
+        <table>
+          <thead><tr><th>Région</th><th>Écoles</th><th>Élèves</th><th>Ens.</th><th>Ratio</th><th>Infra.</th><th>Vérifié</th></tr></thead>
+          <tbody id="reg-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div id="page-charts" class="page">
+    <div class="ph"><h2>Visualisations de Données</h2><p>Analyse graphique multicritères.</p></div>
+    <div class="g2 mb16">
+      <div class="card"><div class="ct">Couverture Infrastructures (Radar)</div><div class="h300 chartbox"><canvas id="ch-radar"></canvas></div></div>
+      <div class="card"><div class="ct">Volume par Région (Polar)</div><div class="h300 chartbox"><canvas id="ch-polar"></canvas></div></div>
+    </div>
+    <div class="g2 mb16">
+      <div class="card"><div class="ct">Évolution des collectes</div><div class="h260 chartbox"><canvas id="ch-line"></canvas></div></div>
+      <div class="card"><div class="ct">Répartition par Genre (Top 8 régions)</div><div class="h260 chartbox"><canvas id="ch-stack"></canvas></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ct">Services par Région (Top 5)</div><div class="h260 chartbox"><canvas id="ch-group"></canvas></div></div>
+      <div class="card"><div class="ct">Corrélation Élèves/Enseignants</div><div class="h260 chartbox"><canvas id="ch-bubble"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- CARTE -->
+  <div id="page-carte" class="page">
+    <div class="ph"><h2>Carte Régionale</h2><p>Répartition géographique des établissements.</p></div>
+    <div class="g2">
+      <div class="card" style="height:600px;position:relative;overflow:hidden;padding:0" id="map-ctn"></div>
+      <div class="card">
+        <div class="ct">Classement par région</div>
+        <div id="reg-rank" style="margin-top:16px"></div>
+        <div class="card" style="margin-top:24px;background:var(--d3)">
+          <div class="ct" style="font-size:16px">Milieu de résidence</div>
+          <div class="h220 chartbox"><canvas id="ch-milieu"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLLECTE -->
+  <div id="page-collecte" class="page">
+    <div class="ph"><h2>Nouvelle Collecte</h2><p>Saisie des données pour un nouvel établissement scolaire.</p></div>
+    <div class="card" style="max-width:900px;margin:0 auto">
+      <div class="steps">
+        <div class="step act" id="stp1"><div class="scn">1</div><div class="sl">Général</div></div>
+        <div class="stepline" id="sl12"></div>
+        <div class="step" id="stp2"><div class="scn">2</div><div class="sl">Localisation</div></div>
+        <div class="stepline" id="sl23"></div>
+        <div class="step" id="stp3"><div class="scn">3</div><div class="sl">Stats</div></div>
+        <div class="stepline" id="sl34"></div>
+        <div class="step" id="stp4"><div class="scn">4</div><div class="sl">Infras</div></div>
+      </div>
+
+      <div id="fs1">
+        <div class="fsl">Informations Générales</div>
+        <div class="fg">
+          <div class="fgr full"><label class="fl">Nom de l'établissement <span class="req">*</span></label><input type="text" class="fi" id="f-nom" placeholder="Ex: Lycée Bilingue de Deido"></div>
+          <div class="fgr"><label class="fl">Code MINESEC / Identifiant</label><input type="text" class="fi" id="f-code" placeholder="Ex: LT-DOU-01"></div>
+          <div class="fgr"><label class="fl">Type d'école <span class="req">*</span></label>
+            <select class="fi" id="f-type"><option value="">Choisir...</option><option>Publique</option><option>Privée Laïque</option><option>Confessionnelle</option><option>Islamique</option><option>Communautaire</option></select>
+          </div>
+          <div class="fgr"><label class="fl">Cycle d'enseignement <span class="req">*</span></label>
+            <select class="fi" id="f-cycle"><option value="">Choisir...</option><option>Maternelle</option><option>Primaire</option><option>Collège (1er cycle)</option><option>Lycée (2e cycle)</option><option>Collège + Lycée</option><option>Enseignement Supérieur</option><option>Technique / Professionnel</option></select>
+          </div>
+          <div class="fgr"><label class="fl">Langue d'enseignement</label>
+            <select class="fi" id="f-lang"><option>Francophone</option><option>Anglophone</option><option>Bilingue</option></select>
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;justify-content:flex-end"><button class="btn btnp" onclick="goStep(2)">Suivant ➜</button></div>
+      </div>
+
+      <div id="fs2" style="display:none">
+        <div class="fsl">Localisation & Contact</div>
+        <div class="fg">
+          <div class="fgr"><label class="fl">Région <span class="req">*</span></label>
+            <select class="fi" id="f-reg" onchange="loadDepts()"><option value="">Choisir...</option><option>Adamaoua</option><option>Centre</option><option>Est</option><option>Extrême-Nord</option><option>Littoral</option><option>Nord</option><option>Nord-Ouest</option><option>Ouest</option><option>Sud</option><option>Sud-Ouest</option></select>
+          </div>
+          <div class="fgr"><label class="fl">Département</label><select class="fi" id="f-dept"><option value="">—</option></select></div>
+          <div class="fgr"><label class="fl">Ville / Commune <span class="req">*</span></label><input type="text" class="fi" id="f-ville"></div>
+          <div class="fgr"><label class="fl">Quartier / Village</label><input type="text" class="fi" id="f-qrt"></div>
+          <div class="fgr"><label class="fl">Milieu</label><select class="fi" id="f-mil"><option>Urbain</option><option>Semi-urbain</option><option>Rural</option></select></div>
+          <div class="fgr"><label class="fl">Responsable / Principal</label><input type="text" class="fi" id="f-resp"></div>
+        </div>
+        <div style="margin-top:24px;display:flex;justify-content:space-between"><button class="btn btns" onclick="goStep(1)">⬅ Retour</button><button class="btn btnp" onclick="goStep(3)">Suivant ➜</button></div>
+      </div>
+
+      <div id="fs3" style="display:none">
+        <div class="fsl">Statistiques & Personnel</div>
+        <div class="fg c3">
+          <div class="fgr"><label class="fl">Total Élèves</label><input type="number" class="fi" id="f-elv" value="0"></div>
+          <div class="fgr"><label class="fl">Filles</label><input type="number" class="fi" id="f-fil" value="0"></div>
+          <div class="fgr"><label class="fl">Garçons</label><input type="number" class="fi" id="f-gar" value="0"></div>
+          <div class="fgr"><label class="fl">Enseignants (Total)</label><input type="number" class="fi" id="f-ens" value="0"></div>
+          <div class="fgr"><label class="fl">Titulaires</label><input type="number" class="fi" id="f-tit" value="0"></div>
+          <div class="fgr"><label class="fl">Salles de classe</label><input type="number" class="fi" id="f-sal" value="0"></div>
+        </div>
+        <div style="margin-top:24px;display:flex;justify-content:space-between"><button class="btn btns" onclick="goStep(2)">⬅ Retour</button><button class="btn btnp" onclick="goStep(4)">Suivant ➜</button></div>
+      </div>
+
+      <div id="fs4" style="display:none">
+        <div class="fsl">Infrastructures & Services</div>
+        <div class="tgrid mb16">
+          <div class="tgi" id="tg-eau" onclick="tg('tg-eau','cb-eau')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">💧 Accès à l'eau</div><input type="checkbox" id="cb-eau" hidden></div>
+          <div class="tgi" id="tg-elec" onclick="tg('tg-elec','cb-elec')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">⚡ Électricité</div><input type="checkbox" id="cb-elec" hidden></div>
+          <div class="tgi" id="tg-net" onclick="tg('tg-net','cb-net')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">🌐 Internet</div><input type="checkbox" id="cb-net" hidden></div>
+          <div class="tgi" id="tg-lat" onclick="tg('tg-lat','cb-lat')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">🚻 Latrines</div><input type="checkbox" id="cb-lat" hidden></div>
+          <div class="tgi" id="tg-bib" onclick="tg('tg-bib','cb-bib')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">📚 Bibliothèque</div><input type="checkbox" id="cb-bib" hidden></div>
+          <div class="tgi" id="tg-inf" onclick="tg('tg-inf','cb-inf')"><div class="tgt"><div class="tgk"></div></div><div class="tgl">💻 Salle Info</div><input type="checkbox" id="cb-inf" hidden></div>
+        </div>
+        <div class="fg">
+          <div class="fgr"><label class="fl">Statut de la fiche</label><select class="fi" id="f-stat"><option>Non vérifié</option><option>En cours</option><option selected>Vérifié</option></select></div>
+          <div class="fgr"><label class="fl">Date de collecte</label><input type="date" class="fi" id="f-date"></div>
+        </div>
+        <div style="margin-top:24px;display:flex;justify-content:space-between"><button class="btn btns" onclick="goStep(3)">⬅ Retour</button><button class="btn btnp" id="savebtn" onclick="saveEcole()">✅ Enregistrer dans la base</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTE -->
+  <div id="page-liste" class="page">
+    <div class="ph">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:20px">
+        <div><h2>Base de Données</h2><p id="listcount">Chargement...</p></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btns" onclick="exportData()">📥 Export CSV</button>
+          <button class="btn btnp" onclick="nav('collecte')">➕ Ajouter</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb16">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div class="fgr" style="flex:1;min-width:200px"><label class="fl">Recherche</label><input type="text" class="fi" id="stbl" placeholder="Nom, ville, responsable..." onkeyup="renderTable()"></div>
+        <div class="fgr" style="width:150px"><label class="fl">Région</label><select class="fi" id="f-r2" onchange="renderTable()"><option value="">Toutes</option><option>Adamaoua</option><option>Centre</option><option>Est</option><option>Extrême-Nord</option><option>Littoral</option><option>Nord</option><option>Nord-Ouest</option><option>Ouest</option><option>Sud</option><option>Sud-Ouest</option></select></div>
+        <div class="fgr" style="width:150px"><label class="fl">Type</label><select class="fi" id="f-t2" onchange="renderTable()"><option value="">Tous</option><option>Publique</option><option>Privée Laïque</option><option>Confessionnelle</option><option>Islamique</option></select></div>
+        <div class="fgr" style="width:150px"><label class="fl">Statut</label><select class="fi" id="f-s2" onchange="renderTable()"><option value="">Tous</option><option>Vérifié</option><option>En cours</option><option>Non vérifié</option></select></div>
+      </div>
+    </div>
+
+    <div class="tbl-ctn">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">#</th>
+            <th onclick="setSort('nom')" style="cursor:pointer">Nom de l'école ↕️</th>
+            <th onclick="setSort('region')" style="cursor:pointer">Région ↕️</th>
+            <th>Ville</th>
+            <th>Type</th>
+            <th>Cycle</th>
+            <th onclick="setSort('nb_eleves')" style="cursor:pointer">Élèves ↕️</th>
+            <th>Ens.</th>
+            <th>Infra</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tblbody"></tbody>
+      </table>
+    </div>
+    <div class="pag">
+      <div id="paginfo" style="font-size:12px;color:var(--mt);margin-right:auto"></div>
+      <div id="pagbtns" style="display:flex;gap:4px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal">
+  <div class="mc">
+    <div class="mch"><div class="mct" id="mnom">Détails de l'école</div><div class="mclose" onclick="closeM()">✕</div></div>
+    <div class="mcb" id="mbody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, set, onValue, remove } from "firebase/database";
+
+// Configuration Firebase fournie par l'utilisateur
+const firebaseConfig = {
+  apiKey: "AIzaSyA9Vm5An7lCVU8_BYii5AaLf2N_e7A_oWo",
+  authDomain: "collecte-de-donnees-2219a.firebaseapp.com",
+  projectId: "collecte-de-donnees-2219a",
+  storageBucket: "collecte-de-donnees-2219a.firebasestorage.app",
+  messagingSenderId: "300060442920",
+  appId: "1:300060442920:web:6f89dc57f3ea3e2729901d"
+};
+
+let fbApp, fbDB;
+
+try {
+  fbApp = initializeApp(firebaseConfig);
+  fbDB = getDatabase(fbApp);
+  window.APP_REMOTE_READY = true;
+  document.getElementById('fb-dot').style.background = 'var(--gl)';
+  document.getElementById('fb-dot').style.boxShadow = '0 0 8px var(--gl)';
+  document.getElementById('fb-txt').textContent = 'Connecté à Firebase';
+  
+  // Synchronisation en temps réel
+  onValue(ref(fbDB, 'ecoles'), async (snap) => {
+    const val = snap.val();
+    
+    // Si la base est vide, on peut l'initialiser avec les données par défaut si besoin
+    if (!val && Array.isArray(window.PRELOADED_DATA) && window.PRELOADED_DATA.length) {
+       document.getElementById('ld-sub').textContent = 'Initialisation de la base...';
+       // Optionnel: décommenter pour peupler la base automatiquement au premier lancement
+       /*
+       for(const item of window.PRELOADED_DATA) {
+         await push(ref(fbDB, 'ecoles'), { ...item, ts: Date.now() });
+       }
+       */
+    }
+    
+    window.DB = Object.entries(val || {}).map(([id, e]) => ({ ...e, id }));
+    window.onDBUpdate();
+  });
+} catch(e) {
+  console.error('Firebase error:', e);
+  window.APP_REMOTE_READY = false;
+  document.getElementById('fb-txt').textContent = 'Erreur Firebase';
+  setTimeout(() => document.getElementById('loader').classList.add('hide'), 1000);
+}
+
+// Exposer les opérations Firebase à window
+window.fbSave = async (ecole) => {
+  if (!fbDB) return null;
+  const r = await push(ref(fbDB, 'ecoles'), { ...ecole, ts: Date.now() });
+  return r.key;
+};
+window.fbDelete = async (id) => {
+  if (!fbDB) return;
+  await remove(ref(fbDB, `ecoles/${id}`));
+};
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE & CONSTANTS
+// ═══════════════════════════════════════════════════════════
+window.DB = [];
+let currentStep = 1, currentPage = 1;
+let sortField = 'nom', sortDir = 'asc';
+const PER_PAGE = 20;
+const PAL = ['#00A878','#F5C400','#F87171','#818CF8','#FB923C','#22D3EE','#F472B6','#4ADE80','#FACC15','#A78BFA'];
+const CHARTS = {};
+
+Chart.defaults.color = '#A8C4B0';
+Chart.defaults.borderColor = 'rgba(0,168,120,.12)';
+Chart.defaults.font.family = "'Outfit', sans-serif";
+
+// Appelé chaque fois que Firebase met à jour les données
+window.onDBUpdate = function() {
+  document.getElementById('nbtotal').textContent = window.DB.length;
+  document.getElementById('fb-txt').textContent = `Firebase · ${window.DB.length} école(s)`;
+  setTimeout(() => document.getElementById('loader').classList.add('hide'), 600);
+  const active = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (active) refreshPage(active);
+};
+
+window.onload = () => {
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  setTimeout(() => {
+    if (!document.getElementById('loader').classList.contains('hide'))
+      document.getElementById('loader').classList.add('hide');
+  }, 5000);
+  nav('dashboard');
+};
+
+function mkC(id, type, data, opts = {}) {
+  if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
+  const c = document.getElementById(id); if (!c) return;
+  const base = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:true,position:'bottom'} } };
+  CHARTS[id] = new Chart(c, { type, data, options:{...base,...opts} });
+}
+
+const TITLES = {dashboard:'Tableau de bord',analytics:'Analytiques',charts:'Graphiques',carte:'Carte régionale',collecte:'Nouvelle collecte',liste:'Base de données'};
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  document.getElementById('tbtitle').textContent = TITLES[page]||page;
+  refreshPage(page);
+}
+function refreshPage(page) {
+  const A = {dashboard:loadDash,analytics:loadAnalytics,charts:loadCharts,carte:loadCarte,liste:()=>{currentPage=1;renderTable();}};
+  if (A[page]) A[page]();
+}
+function toggleSB(){document.getElementById('sidebar').classList.toggle('open');}
+function globalSearch(q){nav('liste');document.getElementById('stbl').value=q;renderTable();}
+function toast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.className=`toast ${type} show`;
+  t.innerHTML=msg;
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),4000);
+}
+function tg(divId,cbId){const d=document.getElementById(divId);d.classList.toggle('on');document.getElementById(cbId).checked=d.classList.contains('on');}
+function resetTg(){['tg-eau','tg-elec','tg-net','tg-lat','tg-bib','tg-inf'].forEach(id=>document.getElementById(id)?.classList.remove('on'));['cb-eau','cb-elec','cb-net','cb-lat','cb-bib','cb-inf'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=false;});}
+
+function getS() {
+  const D = window.DB;
+  const total=D.length, eleves=D.reduce((a,e)=>a+(+e.nb_eleves||0),0), ens=D.reduce((a,e)=>a+(+e.nb_ens||0),0);
+  const regions=new Set(D.map(e=>e.region).filter(Boolean)).size;
+  const byType=cnt('type_ecole'), byRegion=cnt('region'), byCycle=cnt('cycle'), byStatut=cnt('statut');
+  const infra={}; ['acces_eau','acces_electricite','acces_internet','latrines','bibliotheque','salle_info'].forEach(f=>infra[f]=D.filter(e=>e[f]).length);
+  return{total,eleves,ens,regions,byType,byRegion,byCycle,byStatut,infra};
+}
+function cnt(f){return window.DB.reduce((a,e)=>{const k=e[f];if(k)a[k]=(a[k]||0)+1;return a;},{});}
+
+function loadDash() {
+  const s=getS(),D=window.DB;
+  document.getElementById('s-tot').textContent=s.total.toLocaleString('fr-FR');
+  document.getElementById('s-elv').textContent=s.eleves.toLocaleString('fr-FR');
+  document.getElementById('s-ens').textContent=s.ens.toLocaleString('fr-FR');
+  document.getElementById('s-reg').textContent=s.regions;
+  if(s.ens)document.getElementById('s-rens').textContent='Ratio: '+(s.eleves/s.ens).toFixed(1)+' él/ens';
+  const tyK=Object.keys(s.byType),tyV=Object.values(s.byType);
+  mkC('ch-donut','doughnut',{labels:tyK,datasets:[{data:tyV,backgroundColor:PAL,borderWidth:2,borderColor:'#0F1A14'}]},{plugins:{legend:{display:false}},cutout:'68%'});
+  document.getElementById('type-leg').innerHTML=tyK.map((k,i)=>`<div class="dlegitem"><div class="dlegdot" style="background:${PAL[i]}"></div>${k}: <strong>${tyV[i]}</strong></div>`).join('');
+  const iL=['💧 Eau','⚡ Élec','🌐 Net','🚻 Lat','📚 Bib','💻 Info'];
+  const iF=['acces_eau','acces_electricite','acces_internet','latrines','bibliotheque','salle_info'];
+  mkC('ch-infra','bar',{labels:iL,datasets:[{data:iF.map(f=>s.total?Math.round((s.infra[f]||0)/s.total*100):0),backgroundColor:PAL,borderRadius:6}]},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100}}});
+  const rK=Object.keys(s.byRegion).sort((a,b)=>s.byRegion[b]-s.byRegion[a]);
+  mkC('ch-region','bar',{labels:rK.map(k=>k.replace('Extrême-Nord','Extr.-N')),datasets:[{data:rK.map(k=>s.byRegion[k]),backgroundColor:PAL}]},{plugins:{legend:{display:false}}});
+  const rec=[...D].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,6);
+  document.getElementById('recent-list').innerHTML=rec.map(e=>`<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openModal('${e.id}')"><div style="flex:1"><strong>${e.nom}</strong><br><small>${e.region}</small></div><span class="bg ${bc(e.type_ecole)}">${e.type_ecole}</span></div>`).join('');
+}
+
+function loadAnalytics() {
+  const s=getS(),D=window.DB;
+  const REGS=['Adamaoua','Centre','Est','Extrême-Nord','Littoral','Nord','Nord-Ouest','Ouest','Sud','Sud-Ouest'];
+  document.getElementById('reg-body').innerHTML=REGS.map(r=>{
+    const arr=D.filter(e=>e.region===r);
+    if(!arr.length) return "";
+    const el=arr.reduce((a,e)=>a+(+e.nb_eleves||0),0),en=arr.reduce((a,e)=>a+(+e.nb_ens||0),0);
+    return`<tr><td class="tdn">${r}</td><td>${arr.length}</td><td>${el.toLocaleString('fr-FR')}</td><td>${en}</td><td>${en?(el/en).toFixed(1):'—'}</td><td>-</td><td>-</td></tr>`;
+  }).join('');
+}
+
+function loadCharts() {
+  const s=getS(),D=window.DB;
+  const tyK=Object.keys(s.byType);
+  mkC('ch-radar','radar',{labels:['Eau','Elec','Net','Lat','Bib','Info'],datasets:[{label:'Moyenne',data:[80,70,40,90,30,20],borderColor:PAL[0]}]});
+}
+
+function loadCarte() {
+  const s=getS();
+  const C={Adamaoua:{x:55,y:36},Centre:{x:50,y:56},Est:{x:72,y:50},'Extrême-Nord':{x:52,y:12},Littoral:{x:36,y:62},Nord:{x:52,y:26},'Nord-Ouest':{x:32,y:47},Ouest:{x:37,y:54},Sud:{x:50,y:76},'Sud-Ouest':{x:28,y:67}};
+  document.getElementById('map-ctn').innerHTML=Object.entries(C).map(([reg,{x,y}])=>{
+    const n=s.byRegion[reg]||0;
+    return`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--gl);display:flex;align-items:center;justify-content:center;color:white;font-weight:700">${n}</div>
+      <div style="font-size:9px;color:var(--t2)">${reg}</div>
+    </div>`;
+  }).join('');
+}
+
+const DEPTS={Adamaoua:['Djérem','Faro-et-Déo','Mayo-Banyo','Mbéré','Vina'],Centre:['Haute-Sanaga','Lékié','Mbam-et-Inoubou','Mfoundi','Nyong-et-Kellé'],Est:['Boumba-et-Ngoko','Haut-Nyong','Kadey','Lom-et-Djérem'],'Extrême-Nord':['Diamaré','Logone-et-Chari','Mayo-Danay','Mayo-Kani','Mayo-Sava','Mayo-Tsanaga'],Littoral:['Moungo','Nkam','Sanaga-Maritime','Wouri'],Nord:['Bénoué','Faro','Mayo-Louti','Mayo-Rey'],'Nord-Ouest':['Boyo','Bui','Donga-Mantung','Mezam','Momo'],Ouest:['Bamboutos','Haut-Nkam','Menoua','Mifi','Ndé','Noun'],Sud:['Dja-et-Lobo','Mvila','Océan','Vallée-du-Ntem'],'Sud-Ouest':['Fako','Lebialem','Manyu','Meme','Ndian']};
+function loadDepts(){const r=document.getElementById('f-reg').value,s=document.getElementById('f-dept');s.innerHTML='<option value="">—</option>';if(r&&DEPTS[r])DEPTS[r].forEach(d=>s.innerHTML+=`<option>${d}</option>`);}
+function goStep(to){
+  document.getElementById('fs'+currentStep).style.display='none';
+  document.getElementById('stp'+currentStep).classList.remove('act');
+  if(to>currentStep)document.getElementById('stp'+currentStep).classList.add('done');
+  currentStep=to;
+  document.getElementById('fs'+to).style.display='block';
+  document.getElementById('stp'+to).classList.add('act');
+}
+
+async function saveEcole(){
+  const btn=document.getElementById('savebtn');btn.innerHTML='Enregistrement...';btn.disabled=true;
+  const ecole={
+    nom:document.getElementById('f-nom').value,type_ecole:document.getElementById('f-type').value,
+    cycle:document.getElementById('f-cycle').value,region:document.getElementById('f-reg').value,
+    ville:document.getElementById('f-ville').value,nb_eleves:+document.getElementById('f-elv').value||0,
+    nb_ens:+document.getElementById('f-ens').value||0,statut:document.getElementById('f-stat').value,
+    ts:Date.now()
+  };
+  try{
+    if(window.fbSave) await window.fbSave(ecole);
+    toast('✅ École enregistrée !');resetForm();nav('liste');
+  }catch(e){toast('❌ Erreur');}
+  btn.innerHTML="✅ Enregistrer dans la base";btn.disabled=false;
+}
+
+function resetForm(){
+  document.querySelectorAll('#page-collecte input, #page-collecte select').forEach(i=>i.value='');
+  resetTg();goStep(1);
+}
+
+function renderTable(){
+  const q=document.getElementById('stbl').value.toLowerCase();
+  const data=window.DB.filter(e=>e.nom.toLowerCase().includes(q));
+  document.getElementById('listcount').textContent=`${data.length} école(s) enregistrée(s)`;
+  document.getElementById('tblbody').innerHTML=data.map((e,i)=>`
+    <tr>
+      <td>${i+1}</td><td class="tdn">${e.nom}</td><td>${e.region}</td><td>${e.ville}</td>
+      <td><span class="bg ${bc(e.type_ecole)}">${e.type_ecole}</span></td><td>${e.cycle}</td>
+      <td>${e.nb_eleves}</td><td>${e.nb_ens}</td><td>-</td><td>${e.statut}</td>
+      <td><button class="btn btnd btnsm" onclick="delEcole('${e.id}','${e.nom}')">🗑</button></td>
+    </tr>`).join('');
+}
+
+async function delEcole(id,nom){
+  if(!confirm(`Supprimer "${nom}" ?`))return;
+  try{
+    if(window.fbDelete) await window.fbDelete(id);
+    toast('🗑 École supprimée');
+  }catch(e){toast('❌ Erreur');}
+}
+
+function openModal(id){
+  const e=window.DB.find(x=>x.id===id);if(!e)return;
+  document.getElementById('mnom').textContent=e.nom;
+  document.getElementById('mbody').innerHTML=`<div style="color:var(--t2)">Détails de l'école ${e.nom} dans la région ${e.region}.</div>`;
+  document.getElementById('modal').classList.add('open');
+}
+function closeM(){document.getElementById('modal').classList.remove('open');}
+function bc(t){return{Publique:'bgp','Privée Laïque':'bgpr',Confessionnelle:'bgc',Islamique:'bgi',Communautaire:'bgcm'}[t]||'bgp';}
+</script>
+</body>
+</html>
